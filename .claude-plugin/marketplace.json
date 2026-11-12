@@ -1,0 +1,12 @@
+{
+  "name": "river-solutions",
+  "owner": { "name": "River Solutions", "email": "info@river-solutions.com" },
+  "metadata": { "description": "Claude skills for River models (Excel add-in)." },
+  "plugins": [
+    {
+      "name": "river",
+      "source": "./",
+      "description": "Skills for working with River models through the River MCP server."
+    }
+  ]
+}
