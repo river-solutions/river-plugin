@@ -4,12 +4,12 @@ Claude skills for working with River models (Excel add-in), plus the River MCP s
 
 As this plugin bundles a local MCP server, **it only works in Claude Code, and has been tested only with the Desktop app**.
 
-| Skill | What it does | Uses the River MCP server? 
-|-------|--------------|----------------------------
-| `river-model-structure` | Reviews, plans and applies a documentation group structure for a River flow, through the River MCP server. | **Yes** 
-| `river-translate-excel-to-river` | Convert an existing Excel model into a River model (Excel add-in) living in the same workbook. | **Yes** 
-| `river-documentation` | Turns a River documentation export into a user-facing documentation draft (`documentation_draft.md`). | Optional 
-| `river-build-dynamic-website` | Turns a River model into a website where results displayed can be dynamically recalculated based on user inputs. | Optional 
+| Skill                            | What it does                                                                                                     | Uses the River MCP server? |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| `river-model-structure`          | Reviews, plans and applies a documentation group structure for a River flow, through the River MCP server.       | **Yes**                    |
+| `river-translate-excel-to-river` | Convert an existing Excel model into a River model (Excel add-in) living in the same workbook.                   | **Yes**                    |
+| `river-documentation`            | Turns a River documentation export into a user-facing documentation draft (`documentation_draft.md`).            | Optional                   |
+| `river-build-dynamic-website`    | Turns a River model into a website where results displayed can be dynamically recalculated based on user inputs. | Optional                   |
 
 ## Claude Desktop
 
@@ -18,7 +18,7 @@ Skills are loaded through plugins distributed by the River Solutions Marketplace
 1. In Claude Desktop, open **Customize** and select **Plugins**
 2. Click the **Add** button → **Add marketplace**
 3. Select **Add from a repository**
-4. Paste `https://github.com/river-solutions/river-claude-plugin.git` then select it
+4. Paste `https://github.com/river-solutions/river-plugin.git` then select it
 5. Make sure **Sync automatically** is toggled on
 6. The list of plugin will now show a new plugin called **River**. 
 7. Click on **Install for me** to make the plugin available in all your projects. It will inform you that the plugin includes a local MCP server, which is the component that is used to connect to River in Excel.
