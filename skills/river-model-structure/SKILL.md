@@ -27,19 +27,23 @@ Load the River MCP tools with ToolSearch if they are not in the tool list (their
 
 Start with `list_workbooks`: it returns the open workbooks with River. Every other tool takes a required `workbook` parameter set to one of these names. If several are open, ask the user which one to work on, then pass that same name on every call. Switching windows in Excel does not change which workbook a call targets.
 
-Read tools:
-- `get_documentation`: markdown report of the flow. Parameters: `includeUngroupedNodes`, `includeComponents`, `maxLevel`, `graphDirectory`. Call it with `includeUngroupedNodes=true` to see the whole model, and again after changes to verify.
-- `get_groups`: all groups with id, header, comment, x, y, width, height, `parentId` and `overlaps`.
-- `get_node_position`, `get_node_ids`, `get_nodes_by_type`, `get_node_info`, `get_connections`: node geometry, inventory, details and links.
+First, call `get_groups` and `get_node_layout`. Together they give all the geometry and hierarchy of the flow in two calls. Never call `get_node_position` node by node. `get_connections` will give you the dependencies. 
+
+Other read tools you can use:
+- `get_groups`: primary information for getting group structure. Gets all groups with id, header, comment, x, y, width, height, `parentId` and `overlaps`.
+- `get_node_layout`: every node with id, title, name, x, y, width, height and `parentId` (smallest containing group, null if ungrouped), in one call. Use it for node geometry and for grouped vs ungrouped inventory.
+- `get_documentation`: markdown report of the flow. Parameters: `includeUngroupedNodes`, `includeComponents`, `maxLevel`, `graphDirectory`. Call it with `includeUngroupedNodes=true` to see the whole model, and again after changes to verify. 
+- `get_node_ids`, `get_nodes_by_type`, `get_node_info`, `get_connections`: inventory, details and links. `get_node_position` returns a single node position; prefer `get_node_layout`.
 
 Write tools:
 - `create_group(x, y, width, height, header, comment)`: creates a documentation group. Returns the id.
 - `update_group(groupId, header, comment, width, height, x, y)`: changes text, size and position. Only the supplied fields change. Width and height must be given together, and so must x and y (top-left corner).
 - `delete_group(groupId)`: deletes a group. Only the group goes: its nodes and sub-groups stay where they are. It refuses ids that are not groups, so it can never delete a node. The user can undo it in River.
 - `set_node_position(nodeId, x, y)`: moves a node.
+- `update_layout(nodes, groups)`: many node moves (`{nodeId, x, y}`) and group updates (same fields as `update_group`) in one call. Use it whenever more than one node or group changes; do not loop over `set_node_position` or `update_group`.
 
 Limits to keep in mind:
-- Moving a group with `update_group` moves only its rectangle, not the nodes inside it. To relocate a group together with its content, move the group and then every node in it by the same offset with `set_node_position`. Membership is geometric, so nodes left behind drop out of the group.
+- Moving a group with `update_group` moves only its rectangle, not the nodes inside it. To relocate a group together with its content, move the group and every node in it by the same offset in one `update_layout` call. Membership is geometric, so nodes left behind drop out of the group.
 - `delete_group` removes only the group. Its nodes and sub-groups lose that parent but are not touched.
 - A wrongly placed group can be fixed by resizing, moving or deleting it, but plan geometry carefully before creating anything.
 - Membership is purely geometric. A node or group belongs to a group when it lies fully inside its bounds, and `parentId` is the smallest group that fully contains it. Hierarchy is therefore only possible if the canvas layout allows nested rectangles.
@@ -69,7 +73,7 @@ Use these principles when reviewing and when designing.
 - Every node should be in a group. Ungrouped nodes mean the model is only partly documented.
 
 **Layout**
-- Flow reads left to right. Inputs sit on the left or in a clearly separate band, results on the right.
+- Flow generally reads left to right. Inputs sit on the left or in a clearly separate band, results on the right. Create horizontal lanes to improve readability, avoid overly long flows horizontally, and make fan-out/merge dependencies clearer.
 - Related nodes sit next to each other, otherwise a group around them gets huge and swallows unrelated nodes.
 - Groups must not partially overlap. Only full containment is allowed.
 
@@ -103,13 +107,13 @@ Keep the review in prose with a short list of findings. No long tables.
 
 Only after the user has confirmed a plan.
 
-1. **Snapshot**: record the current positions of every node involved (`get_node_position`) and the existing groups (`get_groups`, including header, comment and bounds, so a deleted group can be recreated). Fetch independent positions in parallel.
-2. **Calibrate geometry** from an existing group if there is one: compare its bounds with the positions of the nodes inside it to derive node width and height and the header space. If none exists, assume nodes of about 180 by 120 units, about 70 units of header space above the first row and about 35 to 50 units of margin on the other sides.
-3. **Fix the layout first**: if a group would have to contain unrelated nodes or overlap another group, move the offending nodes with `set_node_position` to sit next to the rest of their group. Move as few nodes as possible, keep the left-to-right flow, and note every move for the final report.
+1. **Snapshot**: record the current node positions and sizes with one `get_node_layout` call and the existing groups with `get_groups` (including header, comment and bounds, so a deleted group can be recreated). Do not query nodes one by one.
+2. **Calibrate geometry**: take node width and height from `get_node_layout`. Derive the header space from an existing group if there is one, by comparing its bounds with the nodes inside it. If a size is 0 (node never rendered) or no group exists, assume nodes of about 180 by 120 units, about 70 units of header space above the first row and about 35 to 50 units of margin on the other sides.
+3. **Fix the layout first**: if a group would have to contain unrelated nodes or overlap another group, move the offending nodes next to the rest of their group, all in one `update_layout` call. Keep a general left-to-right flow that follows the logical flow, but create horizontal lanes if needed.
 4. **Compute rectangles**: for each leaf group take the bounding box of its nodes (top-left corners plus node size), add margins and header space. For a parent group take the bounding box of its children plus margin and header space. Check on paper that no rectangle partially overlaps another, that no parent contains unrelated nodes or groups, and that adjacent rectangles do not touch (leave a gap of at least 10 to 25 units, since touching edges can be reported as overlaps).
 5. **Create groups**: if the plan replaces existing groups, delete exactly those with `delete_group` first, so the new rectangles do not overlap them. Never delete a group the plan does not list. Then create leaf groups first, then parents, with `header` and `comment` set in the same call. Create independent groups in parallel. Do not create anything you have not computed in step 4.
 6. **Verify**:
-   - `get_groups`: each group has the expected `parentId`, and `overlaps` is empty everywhere. If an overlap is reported, fix it with `update_group` (resize or move) rather than creating more groups.
+   - `get_groups`: each group has the expected `parentId`, and `overlaps` is empty everywhere. If an overlap is reported, fix it with `update_group`, or `update_layout` for several groups (resize or move), rather than creating more groups.
    - `get_documentation` with `includeUngroupedNodes=true`: every node appears in the intended group, the "Outputs to" and "Inputs from" tables read sensibly, and no section for ungrouped components remains (or only the ones the plan left out on purpose).
 7. **Report** briefly: the structure that now exists, the nodes that were moved and why, the groups that were deleted or replaced, anything deliberately left out, and the points to check visually on the canvas because node sizes were estimated. Offer to draft the model overview comment.
 

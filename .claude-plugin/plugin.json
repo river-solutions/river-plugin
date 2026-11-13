@@ -1,7 +1,7 @@
 {
   "name": "river",
   "description": "Skills and the River MCP server for working with River models (Excel add-in).",
-  "version": "0.3.2",
+  "version": "0.4.2",
   "author": {
     "name": "River Solutions",
     "email": "info@river-solutions.com"

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "river": {
+      "type": "stdio",
+      "command": "./server/River.McpServer.exe",
+      "args": [],
+      "cwd": "${PLUGIN_ROOT}"
+    }
+  }
+}
