@@ -20,8 +20,13 @@ The River plugin includes the skill files (instructions for the AI tool) as well
 
 **Note**: Anthropic and OpenAI update their desktop apps **extremely frequently**. Expect the instructions below to be temporarily inaccurate as we catch up.
 
-## Claude Desktop
+## Claude Code (CLI)
 
+```
+/plugin install river --marketplace river-solutions/river-plugin
+```
+
+## Claude Desktop
 
 1. In Claude Desktop, open **Customize** and select **Plugins**
 2. Click the **Add** button → **Add marketplace**

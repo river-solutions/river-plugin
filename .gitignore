@@ -1,3 +1,4 @@
 *.pdb
 McpServer/
 !McpServer/*.exe
+*.zip
