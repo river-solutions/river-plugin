@@ -43,9 +43,26 @@ In the ChatGPT app:
 6. Once you're back on the plugin list, click the River plugin
 7. On the next page, click **Install Plugin** on the top right
 
-## Further updates
+## Updating the plugin
 
 From this point, the skills are available in Claude or Codex. They will update automatically when a new version is published.
+
+The MCP connector will check that your version of the plugin is compatible with the version of the Excel Add-In and let you know.
+
+If your version of the Excel Add-in is outdated, fully close Excel and reopen it while online, it will automatically download and install the newest version.
+
+If your version of the plugin is outdated and doesn't update automatically, you can force a refresh. In Claude:
+- Go to **Customize** and click on **Plugins**.
+- Click the **+ Add** button on the top right and select **Manage marketplaces**
+- Click the 3 dots next to **river-solutions** and select **Check for updates**
+- Go back to the Plugins screen, select the **River** plugin. You should see a button **Update** on the top right. Click on it to update the plugin. 
+- Confirm that the indicated version is the latest.
+
+In Codex
+- Click on **Plugins** in the side bar
+- Click the **River** plugin, and in the top bar menu select **Marketplace**
+- Click the **Upgrade** button next to **river-solutions** marketplace
+- After the update, click the **Plugins** in the top menu bar, select **river** and check that the version is current.
 
 ## Using the skills
 

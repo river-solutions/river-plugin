@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hospital Bed Capacity</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="/river-api.js"></script>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f4f5f7;
+    --surface: #ffffff;
+    --surface-2: #f7f8fa;
+    --ink: #0f172a;
+    --ink-2: #475569;
+    --muted: #8a8f98;
+    --border: rgba(15, 23, 42, 0.08);
+    --grid: #e7e8ec;
+    --axis: #c3c2b7;
+    --accent: #2a78d6;
+    --accent-ink: #ffffff;
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
+    --good: #0ca30c;
+    --good-ink: #006300;
+    --critical: #d03b3b;
+    --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0d0d0d;
+      --surface: #1a1a19;
+      --surface-2: #232322;
+      --ink: #f0efec;
+      --ink-2: #c3c2b7;
+      --muted: #898781;
+      --border: rgba(255, 255, 255, 0.08);
+      --grid: #2c2c2a;
+      --axis: #383835;
+      --accent: #3987e5;
+      --series-1: #3987e5;
+      --series-2: #d95926;
+      --good-ink: #0ca30c;
+      --critical: #e66767;
+      --shadow: none;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--ink);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Header */
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: color-mix(in srgb, var(--surface) 85%, transparent);
+    backdrop-filter: blur(12px); border-bottom: 1px solid var(--border);
+  }
+  .header-inner {
+    max-width: 1200px; margin: 0 auto; padding: 0.9rem 1.5rem;
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: center; gap: 0.75rem; }
+  .logo {
+    width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center;
+    background: linear-gradient(135deg, #2a78d6, #104281); color: #fff;
+  }
+  .brand h1 { margin: 0; font-size: 1.05rem; font-weight: 650; letter-spacing: -0.01em; }
+  .brand p { margin: 0; font-size: 0.8rem; color: var(--muted); }
+
+  /* Segmented controls */
+  .segmented {
+    display: inline-flex; padding: 3px; gap: 2px; border-radius: 10px;
+    background: var(--surface-2); border: 1px solid var(--border);
+  }
+  .segmented button {
+    border: 0; background: transparent; color: var(--ink-2); cursor: pointer;
+    padding: 0.4rem 0.9rem; border-radius: 7px; font: inherit; font-size: 0.875rem; font-weight: 500;
+    transition: background 0.15s, color 0.15s;
+  }
+  .segmented button:hover { color: var(--ink); }
+  .segmented button.active { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+  .segmented button:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .scenario-label { font-size: 0.75rem; color: var(--muted); margin-right: 0.5rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+
+  main { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+
+  /* Toolbar: tabs + filters + status */
+  .toolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+  .tabs { display: flex; gap: 1.5rem; border-bottom: 1px solid var(--border); }
+  .tabs button {
+    border: 0; background: none; cursor: pointer; font: inherit; font-weight: 600; font-size: 0.95rem;
+    color: var(--muted); padding: 0.5rem 0; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .tabs button.active { color: var(--ink); border-bottom-color: var(--accent); }
+  .tabs button:hover { color: var(--ink); }
+
+  #status {
+    display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--ink-2);
+    padding: 0.3rem 0.75rem; border-radius: 999px; background: var(--surface); border: 1px solid var(--border);
+  }
+  #status:empty { visibility: hidden; }
+  #status .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--good); }
+  #status.error { color: var(--critical); border-color: color-mix(in srgb, var(--critical) 40%, transparent); }
+  #status.error .dot { background: var(--critical); }
+  .spinner {
+    width: 12px; height: 12px; border-radius: 50%;
+    border: 2px solid color-mix(in srgb, var(--accent) 25%, transparent); border-top-color: var(--accent);
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .filters { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+  .field { display: flex; flex-direction: column; gap: 0.3rem; min-width: 220px; flex: 0 1 320px; }
+  .field span { font-size: 0.75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  select {
+    appearance: none; font: inherit; font-size: 0.9rem; color: var(--ink); width: 100%;
+    padding: 0.55rem 2.2rem 0.55rem 0.8rem; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a8f98' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 0.8rem center;
+    cursor: pointer;
+  }
+
+  /* KPI tiles */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem; box-shadow: var(--shadow); }
+  .kpi .label { font-size: 0.8rem; color: var(--ink-2); font-weight: 500; }
+  .kpi .value { font-size: 1.9rem; font-weight: 650; letter-spacing: -0.02em; margin-top: 0.15rem; }
+  .kpi .sub { font-size: 0.8rem; color: var(--muted); }
+  .badge { display: inline-flex; align-items: center; gap: 0.3rem; font-weight: 600; font-size: 0.8rem; }
+  .badge.bad { color: var(--critical); }
+  .badge.good { color: var(--good-ink); }
+
+  /* Cards */
+  .grid { display: grid; grid-template-columns: 3fr 2fr; gap: 1rem; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; box-shadow: var(--shadow); min-width: 0; }
+  .card h2 { margin: 0; font-size: 0.95rem; font-weight: 600; }
+  .card .desc { margin: 0.15rem 0 1rem; font-size: 0.8rem; color: var(--muted); }
+  .chart-box { position: relative; height: 340px; }
+  details { margin-top: 0.75rem; font-size: 0.8rem; color: var(--ink-2); }
+  summary { cursor: pointer; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-variant-numeric: tabular-nums; }
+  th, td { text-align: right; padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--border); }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--muted); font-weight: 600; }
+  .table-wrap { max-height: 260px; overflow: auto; }
+
+  .panel { display: none; }
+  .panel.active { display: block; animation: fade 0.25s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  @media (max-width: 860px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    main, .header-inner { padding-left: 1rem; padding-right: 1rem; }
+    .scenario-label { display: none; }
+    .field { flex-basis: 100%; }
+    .chart-box { height: 280px; }
+    .kpi .value { font-size: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M2 12c3-4 6-4 9 0s6 4 9 0"/><path d="M2 18c3-4 6-4 9 0s6 4 9 0" opacity=".6"/><path d="M2 6c3-4 6-4 9 0s6 4 9 0" opacity=".35"/></svg>
+        </div>
+        <div>
+          <h1>Hospital Bed Capacity</h1>
+          <p>Scenario-based forecast of bed demand and capacity</p>
+        </div>
+      </div>
+      <div><span class="scenario-label">Scenario</span><div class="segmented" id="scenario-buttons" role="group" aria-label="Scenario"></div></div>
+    </div>
+  </header>
+
+  <main>
+    <div class="toolbar">
+      <nav class="tabs" id="tab-buttons">
+        <button data-tab="beds" class="active">Beds</button>
+        <button data-tab="bed_days">Bed days</button>
+      </nav>
+      <div id="status" role="status" aria-live="polite"></div>
+    </div>
+
+    <section class="panel active" id="panel-beds">
+      <div class="filters">
+        <label class="field"><span>DRG classification</span><select id="beds-drg"></select></label>
+      </div>
+      <div class="kpis" id="beds-kpis"></div>
+      <div class="grid">
+        <div class="card">
+          <h2>Bed demand vs. capacity</h2>
+          <p class="desc">Forecast beds required and beds available, by year</p>
+          <div class="chart-box"><canvas id="chart-beds"></canvas></div>
+          <details><summary>Show data table</summary><div class="table-wrap" id="beds-table"></div></details>
+        </div>
+        <div class="card">
+          <h2>Bed gap</h2>
+          <p class="desc">Forecast minus available — above zero means a shortfall</p>
+          <div class="chart-box"><canvas id="chart-gap"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-bed_days">
+      <div class="filters">
+        <label class="field"><span>DRG classification</span><select id="bd-drg"></select></label>
+        <label class="field"><span>Age group</span><select id="bd-age"></select></label>
+      </div>
+      <div class="kpis" id="bd-kpis"></div>
+      <div class="card">
+        <h2>Bed-days forecast by gender</h2>
+        <p class="desc">Projected inpatient bed-days per year</p>
+        <div class="chart-box"><canvas id="chart-bed_days"></canvas></div>
+        <details><summary>Show data table</summary><div class="table-wrap" id="bd-table"></div></details>
+      </div>
+    </section>
+  </main>
+
+<script>
+const api = new RiverAPI();
+const ALL = '__all__';
+let scenario = null;
+let activeTab = 'beds';
+const cache = {}; // cache[scenario][outputId] = rows
+const charts = {};
+
+const fmt = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
+const fmt1 = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function setStatus(text, isError = false, isLoading = false) {
+  const el = document.getElementById('status');
+  el.innerHTML = text ? `${isLoading ? '<span class="spinner"></span>' : '<span class="dot"></span>'}${esc(text)}` : '';
+  el.className = isError ? 'error' : '';
+}
+
+function uniqueSorted(rows, key) {
+  return [...new Set(rows.map(r => r[key]))].sort();
+}
+
+function fillSelect(select, values, allLabel) {
+  const prev = select.value;
+  const opts = allLabel ? [[ALL, allLabel], ...values.map(v => [v, v])] : values.map(v => [v, v]);
+  select.innerHTML = opts.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('');
+  if (opts.some(([v]) => v === prev)) select.value = prev;
+}
+
+// Sum `fields` per year across the given rows.
+function byYear(rows, fields) {
+  const m = new Map();
+  for (const r of rows) {
+    const acc = m.get(r.Year) || Object.fromEntries(fields.map(f => [f, 0]));
+    for (const f of fields) acc[f] += r[f] || 0;
+    m.set(r.Year, acc);
+  }
+  return [...m.entries()].sort((a, b) => a[0] - b[0]).map(([Year, v]) => ({ Year, ...v }));
+}
+
+function chartDefaults() {
+  Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", sans-serif';
+  Chart.defaults.color = css('--muted');
+  Chart.defaults.borderColor = css('--grid');
+}
+
+function baseOptions(yTitle) {
+  return {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { position: 'top', align: 'start', labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 8, boxHeight: 8, color: css('--ink-2'), padding: 16 } },
+      tooltip: {
+        backgroundColor: css('--surface'), titleColor: css('--ink'), bodyColor: css('--ink-2'),
+        borderColor: css('--border'), borderWidth: 1, padding: 10, cornerRadius: 8, usePointStyle: true, boxPadding: 4,
+        callbacks: { label: c => ` ${c.dataset.label}: ${fmt1.format(c.parsed.y)}` },
+      },
+    },
+    scales: {
+      x: { grid: { display: false }, border: { color: css('--axis') } },
+      y: { border: { display: false }, title: { display: !!yTitle, text: yTitle }, ticks: { callback: v => fmt.format(v) } },
+    },
+  };
+}
+
+function line(label, data, color) {
+  return { label, data, borderColor: color, backgroundColor: color, borderWidth: 2, tension: 0.3, pointRadius: 0, pointHoverRadius: 5, pointHoverBorderWidth: 2, pointHoverBorderColor: css('--surface') };
+}
+
+function draw(id, config) {
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), config);
+}
+
+function table(el, head, rows) {
+  document.getElementById(el).innerHTML =
+    `<table><thead><tr>${head.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>` +
+    rows.map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('') + '</tbody></table>';
+}
+
+function kpi(label, value, sub = '') {
+  return `<div class="kpi"><div class="label">${esc(label)}</div><div class="value">${value}</div><div class="sub">${sub}</div></div>`;
+}
+
+async function ensureData(outputId, columns) {
+  cache[scenario] = cache[scenario] || {};
+  if (!cache[scenario][outputId]) {
+    setStatus(`Running model · ${scenario}`, false, true);
+    const result = await api.run(scenario, outputId, { columns });
+    cache[scenario][outputId] = result.data;
+    setStatus(`${scenario} · computed in ${result.elapsed}s`);
+  }
+  return cache[scenario][outputId];
+}
+
+async function renderBeds() {
+  const rows = await ensureData('beds', ['DRG Classification', 'Year', 'Bed_forecast', 'Beds_available', 'Bed_gap']);
+  const drgSelect = document.getElementById('beds-drg');
+  fillSelect(drgSelect, uniqueSorted(rows, 'DRG Classification'), 'All classifications');
+  const drg = drgSelect.value;
+  const series = byYear(drg === ALL ? rows : rows.filter(r => r['DRG Classification'] === drg), ['Bed_forecast', 'Beds_available', 'Bed_gap']);
+  const years = series.map(r => r.Year);
+  const last = series[series.length - 1] || {};
+  const first = series[0] || {};
+
+  const short = last.Bed_gap > 0;
+  document.getElementById('beds-kpis').innerHTML =
+    kpi(`Beds required · ${last.Year ?? '–'}`, fmt.format(last.Bed_forecast ?? 0),
+        first.Bed_forecast ? `${last.Bed_forecast >= first.Bed_forecast ? '+' : ''}${fmt1.format((last.Bed_forecast / first.Bed_forecast - 1) * 100)}% since ${first.Year}` : '') +
+    kpi(`Beds available · ${last.Year ?? '–'}`, fmt.format(last.Beds_available ?? 0), 'Current capacity') +
+    kpi(`Bed gap · ${last.Year ?? '–'}`, `${last.Bed_gap > 0 ? '+' : ''}${fmt1.format(last.Bed_gap ?? 0)}`,
+        `<span class="badge ${short ? 'bad' : 'good'}">${short ? '▲ Shortfall' : '✓ Sufficient capacity'}</span>`);
+
+  const gapColor = series.map(r => r.Bed_gap > 0 ? css('--critical') : css('--good'));
+  draw('chart-beds', {
+    type: 'line',
+    data: { labels: years, datasets: [
+      line('Beds required (forecast)', series.map(r => r.Bed_forecast), css('--series-1')),
+      { ...line('Beds available', series.map(r => r.Beds_available), css('--series-2')), stepped: true, tension: 0 },
+    ] },
+    options: baseOptions('Beds'),
+  });
+  const gapOpts = baseOptions('Beds');
+  gapOpts.plugins.legend = { display: false };
+  gapOpts.plugins.tooltip.callbacks.label = c => ` ${c.parsed.y > 0 ? 'Shortfall' : 'Surplus'}: ${fmt1.format(Math.abs(c.parsed.y))} beds`;
+  gapOpts.scales.y.grid = { color: ctx => ctx.tick.value === 0 ? css('--axis') : css('--grid') };
+  draw('chart-gap', {
+    type: 'bar',
+    data: { labels: years, datasets: [{ label: 'Bed gap', data: series.map(r => r.Bed_gap), backgroundColor: gapColor, borderRadius: 4, borderSkipped: 'start', maxBarThickness: 28 }] },
+    options: gapOpts,
+  });
+  table('beds-table', ['Year', 'Required', 'Available', 'Gap'],
+    series.map(r => [r.Year, fmt1.format(r.Bed_forecast), fmt.format(r.Beds_available), fmt1.format(r.Bed_gap)]));
+}
+
+async function renderBedDays() {
+  const rows = await ensureData('bed_days', ['DRG Classification', 'Age Group', 'Gender', 'Year', 'Bed-days_forecast']);
+  const drgSelect = document.getElementById('bd-drg');
+  const ageSelect = document.getElementById('bd-age');
+  fillSelect(drgSelect, uniqueSorted(rows, 'DRG Classification'), 'All classifications');
+  fillSelect(ageSelect, uniqueSorted(rows, 'Age Group'), 'All age groups');
+  const drg = drgSelect.value, age = ageSelect.value;
+  const filtered = rows.filter(r => (drg === ALL || r['DRG Classification'] === drg) && (age === ALL || r['Age Group'] === age));
+  const genders = uniqueSorted(rows, 'Gender'); // from all rows so colours stay tied to the gender
+  const years = uniqueSorted(filtered, 'Year');
+  const perGender = genders.map(g => byYear(filtered.filter(r => r.Gender === g), ['Bed-days_forecast']));
+  const total = byYear(filtered, ['Bed-days_forecast']);
+  const first = total[0] || {}, last = total[total.length - 1] || {};
+  const v = r => r?.['Bed-days_forecast'] ?? 0;
+  const change = v(first) ? (v(last) / v(first) - 1) * 100 : 0;
+
+  document.getElementById('bd-kpis').innerHTML =
+    kpi(`Total bed-days · ${last.Year ?? '–'}`, fmt.format(v(last)), `${first.Year ?? ''} baseline: ${fmt.format(v(first))}`) +
+    kpi(`Change since ${first.Year ?? '–'}`, `${change >= 0 ? '+' : ''}${fmt1.format(change)}%`, 'Total bed-days') +
+    genders.map((g, i) => kpi(`${g} · ${last.Year ?? '–'}`, fmt.format(v(perGender[i].find(r => r.Year === last.Year))), 'Bed-days')).join('');
+
+  const colors = [css('--series-1'), css('--series-2')];
+  draw('chart-bed_days', {
+    type: 'line',
+    data: { labels: years, datasets: genders.map((g, i) => line(g, years.map(y => perGender[i].find(r => r.Year === y)?.['Bed-days_forecast'] ?? null), colors[i % colors.length])) },
+    options: baseOptions('Bed-days'),
+  });
+  table('bd-table', ['Year', ...genders, 'Total'],
+    years.map(y => [y, ...perGender.map(s => fmt.format(v(s.find(r => r.Year === y)))), fmt.format(v(total.find(r => r.Year === y)))]));
+}
+
+async function renderActiveTab() {
+  try {
+    if (activeTab === 'beds') await renderBeds();
+    else await renderBedDays();
+  } catch (err) {
+    setStatus(err.message, true);
+  }
+}
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('#tab-buttons button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === `panel-${tab}`));
+  renderActiveTab();
+}
+
+function switchScenario(name) {
+  scenario = name;
+  document.querySelectorAll('#scenario-buttons button').forEach(b => b.classList.toggle('active', b.dataset.scenario === name));
+  renderActiveTab();
+}
+
+async function init() {
+  chartDefaults();
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { chartDefaults(); renderActiveTab(); });
+
+  const scenarios = await api.scenarios();
+  const btnRow = document.getElementById('scenario-buttons');
+  btnRow.innerHTML = scenarios.map(s => `<button data-scenario="${esc(s)}">${esc(s)}</button>`).join('');
+  btnRow.querySelectorAll('button').forEach(b => b.addEventListener('click', () => switchScenario(b.dataset.scenario)));
+
+  document.querySelectorAll('#tab-buttons button').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+  document.getElementById('beds-drg').addEventListener('change', renderActiveTab);
+  document.getElementById('bd-drg').addEventListener('change', renderActiveTab);
+  document.getElementById('bd-age').addEventListener('change', renderActiveTab);
+
+  switchScenario(scenarios[0]);
+}
+
+init().catch(err => setStatus(err.message, true));
+</script>
+</body>
+</html>

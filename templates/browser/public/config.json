@@ -1,0 +1,33 @@
+{
+  "port": 3000,
+  "modelDir": "model",
+  "scriptFile": "script.sql",
+  "scenarioDefsFile": "scenario_definitions.json",
+  "outputs": [
+    {
+      "id": "bed_days",
+      "label": "Bed Days",
+      "file": "outputs/Bed_days.csv",
+      "columns": {
+        "DRG Classification": "string",
+        "Age Group": "string",
+        "Gender": "string",
+        "Year": "integer",
+        "Population": "integer",
+        "Bed-days_forecast": "float"
+      }
+    },
+    {
+      "id": "beds",
+      "label": "Beds",
+      "file": "outputs/Beds.csv",
+      "columns": {
+        "DRG Classification": "string",
+        "Year": "integer",
+        "Bed_forecast": "float",
+        "Beds_available": "integer",
+        "Bed_gap": "float"
+      }
+    }
+  ]
+}

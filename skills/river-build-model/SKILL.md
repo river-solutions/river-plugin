@@ -114,6 +114,7 @@ Work in long format (one row per dimension combination) inside the model; pivot 
 River separates what Excel mixes in dropdowns and lookup formulas:
 - an **Assumption** node holds every option of one assumption in long format (dimension columns, one option column, value columns) and outputs only the rows of the selected option (`SetPointValue`), without the option column;
 - the calculation reads that output with a **Lookup** on the remaining dimensions (**All Combinations** if none is left), then Column formulas;
+- use the dimensions defined in the **Assumption** to map to data using a **Lookup** as much as possible. If an assumption has a unique option but applies to only certain values of a dimension later in the model, use manually added dimension columns that hold the values used to control the mapping, and later use a **Lookup**. Try to use this pattern to avoid using an **All Combinations**, which should be last resort.
 - the flow's **scenarios** are named combinations of options, one per Assumption node. They belong to the flow (`get_scenarios` / `update_scenarios`); the single **Scenarios** node is their editor and outputs the selected options. It has no wires: it finds every Assumption node by itself;
 - a **Combine scenarios** node (type `MultiScenarioOutput`, title "Multi-scenarios") stacks a result across all scenarios with a `scenario` column, for comparison.
 

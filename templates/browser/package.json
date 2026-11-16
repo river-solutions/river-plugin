@@ -1,0 +1,12 @@
+{
+  "name": "river-dynamic-site",
+  "version": "1.0.0",
+  "description": "Dynamic website with River analytics backend",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

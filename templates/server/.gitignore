@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# DuckDB temp files
+model/
+public/index.html
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Agents
+.claude/
