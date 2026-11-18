@@ -40,7 +40,7 @@ Every River tool except `get_help` and `get_node_types` takes a required `workbo
 - **Dimensions** are the categorical columns that define granularity. Mark them in the Excel input / Validate configuration right after import and cleaning, before any modelling component. Decimal columns cannot be dimensions; a dimension cannot be unset downstream (copy it with Column formulas if needed). Matching, grouping, pivoting and time-ordered components need dimensions. `get_help('Dimension')`.
 - **Master dimensions** hold the authoritative list of values of a dimension (e.g. countries); other Validate components check against them. Use them for keys that match several sources. `get_help('MasterDimension')`.
 - **Missing values** propagate in formulas (`A + B` is null if either is), are ignored in aggregations and in Lookup/Breakdown matching; `AND`/`OR` differ from Excel. Handle them explicitly with `IFNULL`, `COALESCE`, `IS NOT NULL`. `get_help('NullValues')`.
-- **Data quality checks** are non-blocking warnings: mandatory (always on), recommended (on by default), optional (off). Keep them on; disable one only for a clear, documented reason and tell the user. `get_help('DataQualityChecks')`.
+- **Data quality checks** are non-blocking warnings: mandatory (always on), recommended (on by default), optional (off). Keep them on; disable one only for a clear, documented reason and tell the user. Read them in `get_node_info` (`checkStatus`, `checks`), toggle them with `set_check_enabled`. `get_help('DataQualityChecks')`.
 - Types and dates: `get_help('DataTypes')`, `get_help('WorkingWithDatesAndTimes')`.
 
 ## Pattern guide
@@ -66,7 +66,7 @@ Ask first: *should the output have the same rows as the main table, more rows, o
 | Add columns from a table of the **same or coarser** granularity (VLOOKUP/XLOOKUP) | **Lookup** | = Main |
 | Expand to a **finer** granularity (country → city), e.g. allocation by shares | **Breakdown** (matching columns + breakdown columns) | > Main |
 | Every pairing, **no shared dimension** (apply a scalar assumption to all products) | **All Combinations** (`CrossJoin`) | Main × Other |
-| **Stack** tables with the same kind of data (region A + region B) | **Union** (columns matched by name; missing ones become null) | Main + Other |
+| **Stack** tables with the same kind of data (region A + region B) | **Union** (columns matched by name; missing ones become null). Stacks 2+ tables: set `<InputCount>N</InputCount>` with `update_node_config`, then connect `In 1`…`In N` | Sum of all inputs |
 | Keep rows whose keys exist in another table, add nothing | **Filter by table** | ≤ Main |
 | Check two tables agree (e.g. River vs original Excel) | **Compare** | one row per difference |
 
@@ -202,7 +202,12 @@ Procedure:
        </SelectableColumnWithMatch>
      </Columns>
      ```
-4. **Verify** with `get_node_info`: `isValid` true = valid configuration; status `Done` = executed; `Initialized` = not fully connected or invalid configuration; `Error` = execution error (read the errors); `Invalid` = an upstream node is in error. Also read failing data quality checks.
+4. **Verify** with `get_node_info`: `isValid` true = valid configuration; status `Done` = executed; `Initialized` = not fully connected or invalid configuration; `Error` = execution error (read the errors); `Invalid` = an upstream node is in error.
+   **Data quality checks** (once `Done`): `checkStatus` is `OK` or `Failed`; each entry of `checks` has `collection` and `id` (its address), `type` (e.g. `NullValues`, `DuplicatedValues`, `NoMatchLeft`, `ValuesMissingFromMaster`), `priority`, `isEnabled`, `isFailed`, `failedCount` and the first `failedItems`.
+   - A failed check means the data does not fit the design: fix the cause (wrong dimensions, wrong matching columns, missing master values, dirty input) before going on, or report it to the user if it is in their data.
+   - Turn on an optional check that guards this step (e.g. nulls on a new column) with `set_check_enabled(nodeId, collection, id, true)`.
+   - Disable a recommended or optional check only for a clear reason, and tell the user. Mandatory checks (`isModifiable` false) cannot be disabled.
+   - For a master dimension check with `masterColumnName` null, set it with `update_node_config`.
 5. **Iterate** on connections or configuration until `Done`. After a few failed attempts, stop and report the error.
 6. **Check the result** with `read_node_output`: row count as expected for the pattern (same, more, fewer), a few key rows filtered, no unexpected nulls.
 7. **Place** it with `set_node_position` next to its neighbours (`get_node_position`), left to right.

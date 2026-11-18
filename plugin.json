@@ -2,7 +2,7 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "river",
   "description": "Skills and the River MCP server for working with River models (Excel add-in).",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "author": {
     "name": "River Solutions",
     "email": "info@river-solutions.com"

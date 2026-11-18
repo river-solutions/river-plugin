@@ -30,14 +30,14 @@ Start with `list_workbooks`: it returns the open workbooks with River. Every oth
 First, call `get_groups` and `get_node_layout`. Together they give all the geometry and hierarchy of the flow in two calls. Never call `get_node_position` node by node. `get_connections` will give you the dependencies. 
 
 Other read tools you can use:
-- `get_groups`: primary information for getting group structure. Gets all groups with id, header, comment, x, y, width, height, `parentId` and `overlaps`.
+- `get_groups`: primary information for getting group structure. Gets all groups with id, header, comment, color, x, y, width, height, `parentId` and `overlaps`.
 - `get_node_layout`: every node with id, title, name, x, y, width, height and `parentId` (smallest containing group, null if ungrouped), in one call. Use it for node geometry and for grouped vs ungrouped inventory.
 - `get_documentation`: markdown report of the flow. Parameters: `includeUngroupedNodes`, `includeComponents`, `maxLevel`, `graphDirectory`. Call it with `includeUngroupedNodes=true` to see the whole model, and again after changes to verify. 
 - `get_node_ids`, `get_nodes_by_type`, `get_node_info`, `get_connections`: inventory, details and links. `get_node_position` returns a single node position; prefer `get_node_layout`.
 
 Write tools:
-- `create_group(x, y, width, height, header, comment)`: creates a documentation group. Returns the id.
-- `update_group(groupId, header, comment, width, height, x, y)`: changes text, size and position. Only the supplied fields change. Width and height must be given together, and so must x and y (top-left corner).
+- `create_group(x, y, width, height, header, comment, color)`: creates a documentation group. Returns the id.
+- `update_group(groupId, header, comment, width, height, x, y, color)`: changes text, color, size and position. Only the supplied fields change. Width and height must be given together, and so must x and y (top-left corner).
 - `delete_group(groupId)`: deletes a group. Only the group goes: its nodes and sub-groups stay where they are. It refuses ids that are not groups, so it can never delete a node. The user can undo it in River.
 - `set_node_position(nodeId, x, y)`: moves a node.
 - `update_layout(nodes, groups)`: many node moves (`{nodeId, x, y}`) and group updates (same fields as `update_group`) in one call. Use it whenever more than one node or group changes; do not loop over `set_node_position` or `update_group`.
@@ -80,6 +80,11 @@ Use these principles when reviewing and when designing.
 **Naming and documentation**
 - Titles are short, descriptive, and in sentence case (only the first letter capitalized), for example "Bed-days forecast", not "Calculate Bed Days Forecast Step 2".
 - Each description says what the group does and why, names key outputs, and quotes the central formula when there is one. One to three sentences.
+
+**Colors**
+- Set `color` on every group by its role: `Yellow` for inputs, `Rose` for assumptions, `Green` for outputs, `Blue` for checks, `Gray` (the default) for calculations, `Red` for things that require the user's attention.
+- Color a group by its dominant role. A parent group that mixes roles stays `Gray`.
+- Use `Red` sparingly, and say in the comment what the user has to look at.
 
 ## Mode 1: review
 

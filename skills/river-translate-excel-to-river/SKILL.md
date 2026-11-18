@@ -74,6 +74,7 @@ Go block by block. Each block becomes one River documentation group of at most 1
    - Processing steps: pick the component with the river-build-workflow pattern guide, using `get_node_types` for the Excel equivalents.
    - Results needed in Excel: `create_sheet` once for the River outputs (e.g. `River outputs`) unless the design puts them elsewhere, then an Excel output.
 2. **Connect, configure, verify, check and place** the node with the "Adding a node" procedure of the river-build-workflow skill. When checking results, compare `read_node_output` (filter on a few keys, e.g. one product and year) with `read_range` on the matching Excel cells, and tell the user about any mismatch.
+3. **Read the data quality checks** in `get_node_info` (`checkStatus`, `checks`). Failed checks often reveal what the Excel model hid: duplicated keys a VLOOKUP silently took the first match of, blanks treated as zero, values missing from a lookup table that ended as `#N/A` or were wrapped in IFERROR. Do not disable a check to make the translation pass: keep it on, note it with its `failedItems`, and tell the user. If the Excel model relies on that behaviour on purpose (e.g. IFERROR to 0), reproduce it explicitly in River and only then disable the check with `set_check_enabled`, saying why.
 
 ### Excel assumptions and scenarios
 
@@ -90,7 +91,7 @@ Build them with the river-build-workflow "Assumptions and scenarios" procedure. 
 
 ## Step 5: structure
 
-1. After each block, create a group with `create_group` whose rectangle fully contains the block's nodes (and nothing else), with a short sentence-case header and a one-to-three sentence comment saying what the block does. Check with `get_groups` that it has no overlaps.
+1. After each block, create a group with `create_group` whose rectangle fully contains the block's nodes (and nothing else), with a short sentence-case header and a one-to-three sentence comment saying what the block does, and a `color` following the convention of the river-model-structure skill (yellow inputs, rose assumptions, green outputs, blue checks, gray calculations and others, red needs the user's attention). Check with `get_groups` that it has no overlaps.
 2. At the end, review the whole flow (`get_documentation` with `includeUngroupedNodes=true`) and add parent groups if they help. For detailed grouping rules and geometry, use the river-model-structure skill.
 
 ## Step 6: dashboards and visualizations
@@ -99,7 +100,7 @@ Out of scope. Dashboards stay in Excel; do not rewire charts or dashboard formul
 
 ## Step 7: summary
 
-Report briefly: the blocks and groups created, the sheets created, the Excel input and output tables (sheet and location) and the source range each input was copied from, any table the user still has to resize or fill, any node that is not `Done` or any result mismatch, and what remains in Excel.
+Report briefly: the blocks and groups created, the sheets created, the Excel input and output tables (sheet and location) and the source range each input was copied from, any table the user still has to resize or fill, any node that is not `Done` or any result mismatch, failing or disabled data quality checks (node, check, a few failed items), and what remains in Excel.
 
 ## Step 8 (optional): comparisons
 
@@ -108,7 +109,7 @@ Ask the user if they would like to add a comparison stage. If they want it:
 2. Create a new Excel Input for each of the original tables, and copy the values.
 3. For each, add a Compare component, link it to the matching pairs of tables.
 
-This logic can't compare data across multiple scenarios. While River has the Multi-scenarios component that turns any table into a combined multi-scenario table, this can't be linked to Excel. As result, the comparison is only valid for the scenario that was selected before the hard copy.
+Note that the comparison is calculated between the assumptions/scenario currently selected in River and the values copied from the original Excel tables. Due to the hard copy, they could be relating to a different setting of assumptions/scenarios in the original Excel file.
 
 ## Style
 
